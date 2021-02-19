@@ -2,7 +2,7 @@ K         ?= K.sh
 MAJOR      = 0
 MINOR      = 6
 PATCH      = 0
-BUILD      = 29
+BUILD      = 61
 
 OBLIGATORY = DISCLAIMER: This is strict non-violent software: \
            \nif you hurt other living creatures, please stop; \
@@ -187,14 +187,15 @@ Darwin: src/lib/Krypto.ninja-main.cxx src/bin/$(KSRC)/$(KSRC).main.h
 
 Win32: src/lib/Krypto.ninja-main.cxx src/bin/$(KSRC)/$(KSRC).main.h
 	$(CHOST)-g++-posix -s -DNDEBUG -o $(KBUILD)/bin/K-$(KSRC).exe \
-	  -D_POSIX -DCURL_STATICLIB -DSIGUSR1=SIGABRT                 \
+	  -DCURL_STATICLIB                                            \
+	  -DSIGUSR1=SIGABRT -DSIGPIPE=SIGABRT -DSIGQUIT=SIGBREAK      \
 	  $< $(KARGS) -static -lstdc++ -lgcc                          \
 	  -lcrypt32 -lpsapi -luserenv -liphlpapi -lwldap32 -lws2_32
 
 download:
 	curl -L https://github.com/ctubio/Krypto-trading-bot/releases/download/$(MAJOR).$(MINOR).x/K-$(MAJOR).$(MINOR).$(PATCH).$(BUILD)-$(KHOST).tar.gz | tar xz
 	@$(MAKE) system_install -s
-	@test -n "`ls *.sh 2>/dev/null`" || (cp etc/K.sh.dist K.sh && chmod +x K.sh)
+	@test -n "`ls *.sh 2>/dev/null`" || (cp etc/K.sh.dist K.sh && chmod +x K.sh && echo && echo NEW CONFIG FILE created at: && LS_COLORS="ex=40;92" CLICOLOR="Yes" ls $(shell ls --color > /dev/null 2>&1 && echo --color) -lah K.sh && echo)
 
 cleandb:
 	rm -vrf $(KHOME)/db/K*
@@ -223,23 +224,26 @@ system_install:
 	@mkdir -p $(KHOME)/cache
 	@mkdir -p $(KHOME)/db
 	@mkdir -p $(KHOME)/ssl
-	@curl -s --time-cond $(KHOME)/ssl/cacert.pem https://curl.haxx.se/ca/cacert.pem -o $(KHOME)/ssl/cacert.pem
+	@curl -s --time-cond $(KHOME)/ssl/cacert.pem https://curl.se/ca/cacert.pem -o $(KHOME)/ssl/cacert.pem
 
-install: packages
+install:
 	@yes = | head -n`expr $(shell tput cols) / 2` | xargs echo && echo " _  __" && echo "| |/ /  v$(MAJOR).$(MINOR).$(PATCH)+$(BUILD)" && echo "| ' /" && echo "| . \\   Select your (beloved) architecture" && echo "|_|\\_\\  to download pre-compiled binaries:" && echo
 	@echo $(CARCH) | tr ' ' "\n" | cat -n && echo && echo "(Hint! uname says \"`uname -sm`\")" && echo
-	@read -p "[$(shell seq -s \\ `echo $(CARCH) | tr ' ' "\n" | wc -l`)]: " chost && $(MAKE) download CHOST=`echo $(CARCH) | cut -d ' ' -f$${chost}`
+	@read -p "[$(shell seq -s \\ `echo $(CARCH) | wc -w`)]: " chost && $(MAKE) download CHOST=`echo $(CARCH) | cut -d ' ' -f$${chost}`
 
-docker: packages download
-	@sed -i "/Usage/,+73d" K.sh
+docker: download
+	@sed -i "/Usage/,+$(shell expr `cat K.sh | wc -l` - 16)d" K.sh
 
 reinstall:
-	test -d .git && ((test -n "`git diff`" && (echo && echo !!Local changes will be lost!! press CTRL-C to abort. && echo && sleep 5) || :) \
-	&& git fetch && git merge FETCH_HEAD || (git reset FETCH_HEAD && git checkout .)) || curl https://raw.githubusercontent.com/ctubio/Krypto-trading-bot/master/Makefile > Makefile
+	@test -d .git && ((test -n "`git diff`" && (echo && echo !!Local changes will be lost!! press CTRL-C to abort. && echo && sleep 5) || :) \
+	&& git fetch && git merge FETCH_HEAD || (git reset FETCH_HEAD && git checkout .)) || curl -O krypto.ninja/Makefile
 	@$(MAKE) install
-	@echo && echo ..done! Please restart any running instance and also refresh the UI if is currently opened in your browser.
+	@echo && echo ..done! Please restart any running instance.
 
-list:
+screen-help:
+	$(if $(shell test -z "`command -v screen`" && echo 1),$(warning Please install screen using the package manager of your system.);$(error screen command not found))
+
+list: screen-help
 	@screen -list || :
 
 restartall:
@@ -261,15 +265,15 @@ restart:
 	@$(MAKE) start -s
 	@$(MAKE) list -s
 
-stop:
+stop: screen-help
 	@screen -XS $(K) quit && echo STOP $(K) DONE || :
 
-start:
+start: screen-help
 	@test -n "`screen -list | grep "\.$(K)	("`"         \
 	&& (echo $(K) is already running.. && screen -list)  \
 	|| (screen -dmS $(K) ./$(K) && echo START $(K) DONE)
 
-screen:
+screen: screen-help
 	@test -n "`screen -list | grep "\.$(K)	("`" && (    \
 	echo Detach screen hotkey: holding CTRL hit A then D \
 	&& sleep 2 && screen -r $(K)) || screen -list || :
@@ -295,17 +299,10 @@ else
 	@rm -f PVS-Studio.log > /dev/null 2>&1
 endif
 
-#png: etc/${PNG}.png etc/${PNG}.json
-#	convert etc/${PNG}.png -set "K.conf" "`cat etc/${PNG}.json`" K: etc/${PNG}.png 2>/dev/null || :
-#	@$(MAKE) png-check -s
-
-#png-check: etc/${PNG}.png
-#	@test -n "`identify -verbose etc/${PNG}.png | grep 'K\.conf'`" && echo Configuration injected into etc/${PNG}.png OK, feel free to remove etc/${PNG}.json anytime. || echo nope, injection failed.
-
 push:
 	@date=`date` && (git diff || :) && git status && read -p "KMOD: " KMOD \
 	&& git add . && git commit -S -m "$${KMOD}"                            \
-	&& ((KALL=1 $(MAKE) K doc release && git push) || git reset HEAD^1)    \
+	&& ((KALL=1 $(MAKE) K release && git push) || git reset HEAD^1)        \
 	&& echo $${date} && date
 
 MAJOR:
@@ -349,4 +346,4 @@ md5: src
 asandwich:
 	@test "`whoami`" = "root" && echo OK || echo make it yourself!
 
-.PHONY: all K $(SOURCE) hlep hepl help doc test src assets assets.o clean check dist download cleandb list screen start stop restart startall stopall restartall packages system_install uninstall install docker reinstall diff upgrade changelog test-c push MAJOR MINOR PATCH BUILD release md5 asandwich
+.PHONY: all K $(SOURCE) hlep hepl help doc test src assets assets.o clean check dist download cleandb screen-help list screen start stop restart startall stopall restartall packages system_install uninstall install docker reinstall diff upgrade changelog test-c push MAJOR MINOR PATCH BUILD release md5 asandwich

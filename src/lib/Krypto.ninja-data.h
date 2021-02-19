@@ -202,18 +202,18 @@ namespace ₿ {
             : Async(nullptr)
             , sockfd(s)
           {};
-          virtual void start(const curl_socket_t&, const function<void()>&) = 0;
-          virtual void stop() = 0;
+          virtual void start(const curl_socket_t&, const function<void()>&)  = 0;
+          virtual void stop()                                                = 0;
         protected:
           virtual void change(const int&, const function<void()>& = nullptr) = 0;
       };
     public:
-      virtual          void  timer_ticks_factor(const unsigned int&) const        = 0;
-      virtual          void  timer_1s(const TimeEvent&)                           = 0;
-      virtual         Async *async(const function<void()>&)                       = 0;
-      virtual curl_socket_t  poll()                                               = 0;
-      virtual          void  walk()                                               = 0;
-      virtual          void  end()                                                = 0;
+      virtual          void  timer_ticks_factor(const unsigned int&) const = 0;
+      virtual          void  timer_1s(const TimeEvent&)                    = 0;
+      virtual         Async *async(const function<void()>&)                = 0;
+      virtual curl_socket_t  poll()                                        = 0;
+      virtual          void  walk()                                        = 0;
+      virtual          void  end()                                         = 0;
   };
 #if defined _WIN32 or defined __APPLE__
   class Events: public Loop {
@@ -427,7 +427,7 @@ namespace ₿ {
   };
 #endif
 
-  static function<void(CURL*)> curl_global_setopt = [](CURL *curl) {
+  static function<void(CURL*)> args_easy_setopt = [](CURL *curl) {
     curl_easy_setopt(curl, CURLOPT_USERAGENT, "K");
   };
 
@@ -456,7 +456,7 @@ namespace ₿ {
             in.clear();
             CURLcode rc;
             if (CURLE_OK == (rc = init())) {
-              curl_global_setopt(curl);
+              args_easy_setopt(curl);
               curl_easy_setopt(curl, CURLOPT_URL, url.data());
               curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
               curl_easy_setopt(curl, CURLOPT_CONNECT_ONLY, 1L);
@@ -555,28 +555,16 @@ namespace ₿ {
     public_friend:
       class Web {
         public:
-          static const json xfer(const string &url, const long &timeout = 13) {
-            return request(url, [&](CURL *curl) {
-              curl_easy_setopt(curl, CURLOPT_TIMEOUT, timeout);
-            });
-          };
-          static const json xfer(const string &url, const string &post) {
-            return request(url, [&](CURL *curl) {
-              struct curl_slist *h_ = nullptr;
-              h_ = curl_slist_append(h_, "Content-Type: application/x-www-form-urlencoded");
-              curl_easy_setopt(curl, CURLOPT_HTTPHEADER, h_);
-              curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post.data());
-            });
-          };
-          static const json request(const string &url, const function<void(CURL*)> curl_custom_setopt) {
+          static json xfer(const string &url, const function<void(CURL*)> _easy_setopt = nullptr) {
             static mutex waiting_reply;
             lock_guard<mutex> lock(waiting_reply);
             string reply;
             CURLcode rc = CURLE_FAILED_INIT;
             CURL *curl = curl_easy_init();
             if (curl) {
-              curl_global_setopt(curl);
-              curl_custom_setopt(curl);
+              args_easy_setopt(curl);
+              if (_easy_setopt) _easy_setopt(curl);
+              curl_easy_setopt(curl, CURLOPT_TIMEOUT, 21L);
               curl_easy_setopt(curl, CURLOPT_URL, url.data());
               curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &write);
               curl_easy_setopt(curl, CURLOPT_WRITEDATA, &reply);
@@ -604,19 +592,23 @@ namespace ₿ {
           CURLcode connect(const string &uri) {
             CURLcode rc = CURLE_URL_MALFORMAT;
             CURLU *url = curl_url();
-            char *host_,
-                 *port_,
-                 *path_;
+            char *host,
+                 *port,
+                 *path,
+                 *query;
             string header;
             if (!curl_url_set(url, CURLUPART_URL, ("http" + uri.substr(2)).data(), 0)) {
-              if (!curl_url_get(url, CURLUPART_HOST, &host_, 0)) {
-                header = string(host_);
-                curl_free(host_);
-                if (!curl_url_get(url, CURLUPART_PORT, &port_, CURLU_DEFAULT_PORT)) {
-                  header += ":" + string(port_);
-                  curl_free(port_);
-                  if (!curl_url_get(url, CURLUPART_PATH, &path_, 0)) {
-                    header = "GET " + string(path_) + " HTTP/1.1"
+              if (!curl_url_get(url, CURLUPART_HOST, &host, 0)) {
+                header = string(host);
+                curl_free(host);
+                if (!curl_url_get(url, CURLUPART_PORT, &port, CURLU_DEFAULT_PORT)) {
+                  header += ":" + string(port);
+                  curl_free(port);
+                  if (!curl_url_get(url, CURLUPART_PATH, &path, 0)) {
+                    header = "GET " + string(path) + (
+                                curl_url_get(url, CURLUPART_QUERY, &query, 0)
+                                  ? "" : "?" + string(query)
+                             ) + " HTTP/1.1"
                              "\r\n" "Host: " + header +
                              "\r\n" "Upgrade: websocket"
                              "\r\n" "Connection: Upgrade"
@@ -624,7 +616,8 @@ namespace ₿ {
                              "\r\n" "Sec-WebSocket-Version: 13"
                              "\r\n"
                              "\r\n";
-                    curl_free(path_);
+                    curl_free(path);
+                    curl_free(query);
                     rc = CURLE_OK;
                   }
                 }
@@ -651,6 +644,10 @@ namespace ₿ {
             if (drop) cleanup();
             return msg;
           };
+      };
+      class WebSocketTwin: public WebSocket {
+        protected:
+          virtual string twin(const string&) const = 0;
       };
       class FixSocket: public Easy,
                        public FixFrames {
@@ -696,6 +693,9 @@ namespace ₿ {
       static string strU(string input) {
         transform(input.begin(), input.end(), input.begin(), ::toupper);
         return input;
+      };
+      static string CRC32(const string &input) {
+        return to_string(crc32(0, (const Bytef*)input.data(), input.length()));
       };
       static string B64(const string &input) {
         BIO *bio, *b64;

@@ -380,7 +380,7 @@ namespace tribeca {
         vector<Order*> workingOrders;
         for (auto &it : orders)
           if (Status::Working == it.second.status
-            and it.second.postOnly
+            and !it.second.manual
           ) workingOrders.push_back(&it.second);
         return workingOrders;
       };
@@ -912,7 +912,7 @@ namespace tribeca {
       bool warn_empty() const {
         const bool err = bids.empty() or asks.empty();
         if (err and (float)clock()/CLOCKS_PER_SEC > 3.0)
-          K.logWar("QE", "Unable to calculate quote, missing market data");
+          K.logWar("QE", "Unable to calculate quote, missing market data", 3e+3);
         return err;
       };
       void timer_1s() {
@@ -1135,6 +1135,7 @@ namespace tribeca {
       void click(const json &j) override {
         if (j.is_object() and j.value("price", 0.0) and j.value("quantity", 0.0)) {
           json order = j;
+          order["manual"]  = true;
           order["orderId"] = K.gateway->randId();
           K.clicked(this, order);
         }
@@ -1740,7 +1741,7 @@ namespace tribeca {
       bool warn_empty() const {
         const bool err = empty();
         if (err and (float)clock()/CLOCKS_PER_SEC > 3.0)
-          K.logWar("PG", "Unable to calculate TBP, missing wallet data");
+          K.logWar("PG", "Unable to calculate TBP, missing wallet data", 3e+3);
         return err;
       };
       bool empty() const {
@@ -1958,7 +1959,7 @@ namespace tribeca {
       {};
       void checkCrossedQuotes() {
         if (bid.checkCrossed(ask) or ask.checkCrossed(bid))
-          K.logWar("QE", "Crossed bid/ask quotes detected, that is.. unexpected");
+          K.logWar("QE", "Crossed bid/ask quotes detected, that is.. unexpected", 3e+3);
       };
       void debug(const string &step) {
         if (K.arg<int>("debug-quotes"))
@@ -2009,7 +2010,7 @@ namespace tribeca {
         if (quotes.bid.price <= 0 or quotes.ask.price <= 0) {
           quotes.bid.clear(QuoteState::WidthMustBeSmaller);
           quotes.ask.clear(QuoteState::WidthMustBeSmaller);
-          K.logWar("QP", "Negative price detected, widthPing must be smaller");
+          K.logWar("QP", "Negative price detected, widthPing must be smaller", 3e+3);
         }
       };
     private:
@@ -2255,7 +2256,7 @@ namespace tribeca {
           }
           ++countWaiting;
         } else ++countWorking;
-        return order.postOnly;
+        return !order.manual;
       };
       void applyQuotingParameters() {
         quotes.debug("?"); applySuperTrades();
@@ -2476,57 +2477,68 @@ namespace tribeca {
           );
       };
       void applyRoundSize() {
-        if (!quotes.bid.empty())
+        if (!quotes.bid.empty()) {
+          const Amount minBid = K.gateway->minValue
+            ? fmax(K.gateway->minSize, K.gateway->minValue / quotes.bid.price)
+            : K.gateway->minSize;
+          const Amount maxBid = K.gateway->margin == Future::Spot
+            ? wallet.quote.total / (quotes.bid.price * (1.0 + K.gateway->makeFee))
+            : (K.gateway->margin == Future::Inverse
+                ? wallet.base.amount * (quotes.bid.price / (1.0 + K.gateway->takeFee))
+                : wallet.base.amount / quotes.bid.price
+            );
           quotes.bid.size = K.gateway->decimal.amount.round(
-            fmax(K.gateway->minSize, fmin(
+            fmax(minBid, fmin(
               quotes.bid.size,
-              K.gateway->decimal.amount.floor(
-                K.gateway->margin == Future::Spot
-                  ? wallet.quote.total / (quotes.bid.price * (1.0 + K.gateway->makeFee))
-                  : (K.gateway->margin == Future::Inverse
-                      ? wallet.base.amount * (quotes.bid.price / (1.0 + K.gateway->takeFee))
-                      : wallet.base.amount / quotes.bid.price
-                  )
-              )
+              K.gateway->decimal.amount.floor(maxBid)
             ))
           );
-        if (!quotes.ask.empty())
+        }
+        if (!quotes.ask.empty()) {
+          const Amount minAsk = K.gateway->minValue
+            ? fmax(K.gateway->minSize, K.gateway->minValue / quotes.ask.price)
+            : K.gateway->minSize;
+          const Amount maxAsk = K.gateway->margin == Future::Spot
+            ? wallet.base.total
+            : (K.gateway->margin == Future::Inverse
+                ? (quotes.bid.empty()
+                  ? wallet.base.amount * (quotes.ask.price / (1.0 + K.gateway->takeFee))
+                  : quotes.bid.size)
+                : wallet.base.amount / quotes.ask.price
+            );
           quotes.ask.size = K.gateway->decimal.amount.round(
-            fmax(K.gateway->minSize, fmin(
+            fmax(minAsk, fmin(
               quotes.ask.size,
-              K.gateway->decimal.amount.floor(
-                K.gateway->margin == Future::Spot
-                  ? wallet.base.total
-                  : (K.gateway->margin == Future::Inverse
-                      ? (quotes.bid.empty()
-                        ? wallet.base.amount * (quotes.ask.price / (1.0 + K.gateway->takeFee))
-                        : quotes.bid.size
-                      )
-                      : wallet.base.amount / quotes.ask.price
-                  )
-              )
+              K.gateway->decimal.amount.floor(maxAsk)
             ))
           );
+        }
       };
       void applyDepleted() {
-        if (!quotes.bid.empty()
-          and (K.gateway->margin == Future::Spot
-                ? wallet.quote.total / quotes.bid.price
-                : (K.gateway->margin == Future::Inverse
-                    ? wallet.base.amount * (quotes.bid.price / (1.0 + K.gateway->takeFee))
-                    : wallet.base.amount / quotes.bid.price
-                )
-          ) < K.gateway->minSize * (1.0 + K.gateway->makeFee)
-        ) quotes.bid.clear(QuoteState::DepletedFunds);
-        if (!quotes.ask.empty()
-          and (K.gateway->margin == Future::Spot
-                ? wallet.base.total
-                : (K.gateway->margin == Future::Inverse
-                    ? wallet.base.amount * (quotes.ask.price / (1.0 + K.gateway->takeFee))
-                    : wallet.base.amount / quotes.ask.price
-                )
-          ) < K.gateway->minSize * (1.0 + K.gateway->makeFee)
-        ) quotes.ask.clear(QuoteState::DepletedFunds);
+        if (!quotes.bid.empty()) {
+          const Amount minBid = K.gateway->minValue
+            ? fmax(K.gateway->minSize, K.gateway->minValue / quotes.bid.price)
+            : K.gateway->minSize;
+          if ((K.gateway->margin == Future::Spot
+              ? wallet.quote.total / quotes.bid.price
+              : (K.gateway->margin == Future::Inverse
+                  ? wallet.base.amount * (quotes.bid.price / (1.0 + K.gateway->takeFee))
+                  : wallet.base.amount / quotes.bid.price)
+              ) < minBid * (1.0 + K.gateway->makeFee)
+          ) quotes.bid.clear(QuoteState::DepletedFunds);
+        }
+        if (!quotes.ask.empty()) {
+          const Amount minAsk = K.gateway->minValue
+            ? fmax(K.gateway->minSize, K.gateway->minValue / quotes.ask.price)
+            : K.gateway->minSize;
+          if ((K.gateway->margin == Future::Spot
+              ? wallet.base.total
+              : (K.gateway->margin == Future::Inverse
+                  ? wallet.base.amount * (quotes.ask.price / (1.0 + K.gateway->takeFee))
+                  : wallet.base.amount / quotes.ask.price)
+              ) < minAsk * (1.0 + K.gateway->makeFee)
+          ) quotes.ask.clear(QuoteState::DepletedFunds);
+        }
       };
       void applyWaitingPing() {
         if (qp.safety == QuotingSafety::Off) return;
@@ -2625,7 +2637,7 @@ namespace tribeca {
     };
   };
 
-  class Product: public Client::Broadcast<Product> {
+  struct Product: public Client::Broadcast<Product> {
     private_ref:
       const KryptoNinja &K;
     public:
@@ -2660,7 +2672,7 @@ namespace tribeca {
     j = k.to_json();
   };
 
-  class Memory: public Client::Broadcast<Memory> {
+  struct Memory: public Client::Broadcast<Memory> {
     public:
       unsigned int orders_60s = 0;
     private:

@@ -3,13 +3,13 @@ HINT     = This Makefile can't be used directly, consider cd ../.. before try ag
 $(if $(subst 0,,${MAKELEVEL}),,$(warning $(ERR));$(error $(HINT)))
 
 V_ZLIB  = 1.2.11
-V_SSL   = 1.1.1i
-V_CURL  = 7.74.0
+V_SSL   = 1.1.1j
+V_CURL  = 7.75.0
 V_SQL   = 3340100
 V_NCUR  = 6.1
 V_JSON  = 3.9.1
 V_CATCH = 2.11.1
-V_UV    = 1.40.0
+V_UV    = 1.41.0
 
 KBUILD := $(abspath ../../build-$(KHOST))
 
@@ -54,16 +54,15 @@ openssl:
 curl:
 	test -d $(KBUILD)/var/curl-$(V_CURL) || (                                               \
 	curl -L https://curl.haxx.se/download/curl-$(V_CURL).tar.gz | tar xz -C $(KBUILD)/var   \
-	&& cd $(KBUILD)/var/curl-$(V_CURL)                                                      \
-	&& PKG_CONFIG="pkg-config --static" PKG_CONFIG_PATH=$(KBUILD)/lib/pkgconfig             \
-	./configure --host=$(CHOST) --prefix=$(KBUILD)                                          \
-	$(if $(findstring /var/lib,$(KHOME)), --with-ca-bundle=$(KHOME)/ssl/cacert.pem,         \
-	--with-ca-bundle=$(subst /,\\\\,$(KHOME))\\\\ssl\\\\cacert.pem)                         \
-	--with-zlib=$(KBUILD) --with-ssl=$(KBUILD) --disable-ares                               \
-	--disable-manual --disable-imap --disable-file --disable-tftp --disable-smtp            \
-	--disable-pop3 --disable-smb --disable-ftp --disable-sspi --disable-ldap --disable-dict \
-	--without-libpsl --without-nghttp2 --without-libssh2 --disable-telnet --disable-rtsp    \
-	--disable-gopher --without-libidn2 --without-librtmp --disable-shared --enable-static   \
+	&& cd $(KBUILD)/var/curl-$(V_CURL) && PKG_CONFIG="pkg-config --static"                  \
+	PKG_CONFIG_PATH=$(KBUILD)/lib/pkgconfig ./configure --host=$(CHOST) --prefix=$(KBUILD)  \
+	--with-ca-bundle=$(if $(findstring /var/lib,$(KHOME)                                    \
+	),$(KHOME)/ssl/,$(subst /,\\\\,$(KHOME))\\\\ssl\\\\)cacert.pem --with-zlib=$(KBUILD)    \
+	--with-ssl=$(KBUILD) --disable-ares --disable-manual --disable-imap --disable-file      \
+	--disable-tftp --disable-smtp --disable-pop3 --disable-smb --disable-ftp --disable-sspi \
+	--disable-ldap --disable-dict --without-libpsl --without-nghttp2 --without-libssh2      \
+	--disable-telnet --disable-rtsp --disable-gopher --without-libidn2 --without-librtmp    \
+	--disable-shared --enable-static                                                        \
 	&& make && (cd lib && make install) && (cd include && make install)                     )
 
 sqlite:

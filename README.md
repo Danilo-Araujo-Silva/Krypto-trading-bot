@@ -8,7 +8,7 @@
 [![Software License](https://img.shields.io/badge/license-ISC-551a8b.svg)](https://raw.githubusercontent.com/ctubio/Krypto-trading-bot/master/LICENSE)
 [![Software License](https://img.shields.io/badge/license-MIT-551a8b.svg)](https://raw.githubusercontent.com/ctubio/Krypto-trading-bot/master/COPYING)
 
-[`K`](https://github.com/ctubio/Krypto-trading-bot) is a very low latency [market making](https://github.com/ctubio/Krypto-trading-bot/blob/master/doc/MANUAL.md#what-is-market-making) trading bot with a fully featured [web interface](https://github.com/ctubio/Krypto-trading-bot#web-ui). The bot can place and cancel orders on one of [several supported cryptocoin exchanges](https://github.com/ctubio/Krypto-trading-bot#compatible-exchanges) in less than a few miliseconds per order on a decent machine.
+[`K`](https://github.com/ctubio/Krypto-trading-bot) is a very low latency [market making](https://github.com/ctubio/Krypto-trading-bot/blob/master/doc/MANUAL.md#what-is-market-making) trading bot with a fully featured [web interface](https://github.com/ctubio/Krypto-trading-bot#web-ui). It can place and cancel orders on one of [several supported cryptocoin exchanges](https://github.com/ctubio/Krypto-trading-bot#compatible-exchanges) in less than a few miliseconds per order on a decent machine.
 
 ### <img src="https://github.githubassets.com/images/icons/emoji/unicode/1f4be.png" height="64" width="64"  align="middle" /> Latest version at https://github.com/ctubio/Krypto-trading-bot <img src="https://github.githubassets.com/images/icons/emoji/unicode/1f51e.png" height="64" width="64" align="middle" /> <img src="https://github.githubassets.com/images/icons/emoji/unicode/1f4b8.png" height="64" width="64" align="middle" />
 
@@ -17,9 +17,9 @@
 [![Quality Status](https://img.shields.io/badge/review-clang--tidy%20+%20pvs-4cc61e.svg)](https://www.codacy.com/gh/ctubio/Krypto-trading-bot/dashboard)
 [![Open Issues](https://img.shields.io/github/issues/ctubio/Krypto-trading-bot.svg)](https://github.com/ctubio/Krypto-trading-bot/issues)
 [![Last Commit](https://img.shields.io/github/last-commit/ctubio/Krypto-trading-bot.svg)](https://github.com/ctubio/Krypto-trading-bot)
-[![Downloads Last 21 Commits](https://img.shields.io/github/downloads/ctubio/Krypto-trading-bot/total.svg?label=downloads%20last%2021%20commits)](https://github.com/ctubio/Krypto-trading-bot)
+[![Downloads Last 21 Commits](https://img.shields.io/github/downloads/ctubio/Krypto-trading-bot/total.svg?label=downloads%20last%20releases)](https://github.com/ctubio/Krypto-trading-bot)
 
-Runs on unix-like systems. Persistence is achieved through a built-in server-less SQLite C++ interface. Installation via Docker is supported, but manual installation in a dedicated [Debian](https://cdimage.debian.org/cdimage/weekly-builds/amd64/iso-cd/), [Raspberry](https://www.raspberrypi.org/software/), [Red Hat](https://developers.redhat.com/products/rhel/download), [CentOS](https://wiki.centos.org/Download) or macOS instance is recommended.
+Runs on unix-like systems. Persistence is achieved through a built-in server-less SQLite C++ interface.<br> Installation in a dedicated [Debian](https://cdimage.debian.org/cdimage/weekly-builds/amd64/iso-cd/), [Raspberry](https://www.raspberrypi.org/software/), [Red Hat](https://developers.redhat.com/products/rhel/download), [CentOS](https://wiki.centos.org/Download) or macOS instance is recommended.
 
 ![Web UI Preview](https://user-images.githubusercontent.com/1634027/44740469-d5c7ff00-aafa-11e8-9252-73b9c1283adb.png)
 
@@ -30,7 +30,7 @@ The web UI is compatible with most web browsers/devices/resolutions, but Firefox
 ||with Post-Only Orders support|without Post-Only|
 |---|---|---|
 |**without Maker fees**|[BitMEX](https://www.bitmex.com/) <sub>([fees](https://www.bitmex.com/app/fees))</sub><br> &#10239; _REST + WebSocket_|*none*|
-|**with Maker and Taker fees**|[Coinbase](https://pro.coinbase.com/) <sub>([fees](https://pro.coinbase.com/orders/fees))</sub><br> &#10239; _REST + WebSocket + FIX_<br><br>[HitBTC](https://hitbtc.com/) <sub>([fees](https://hitbtc.com/fee-tier))</sub><br>[Bequant](https://bequant.io/) <sub>([fees](https://bequant.io/fees-and-limits))</sub><br> &#10239; _REST + WebSocket_<br><br>[Bitfinex](https://www.bitfinex.com/) <sub>([fees](https://www.bitfinex.com/fees))</sub><br>[Ethfinex](https://www.ethfinex.com/) <sub>([fees](https://www.ethfinex.com/fees))</sub><br> &#10239; _REST + WebSocket_<br><br>[Kraken](https://www.kraken.com/) <sub>([fees](https://www.kraken.com/features/fee-schedule))</sub><br> &#10239; _REST_<br><br>[Poloniex](https://www.poloniex.com/) <sub>([fees](https://poloniex.com/fees/))</sub><br> &#10239; _REST_|*none*|
+|**with Maker and Taker fees**|[Coinbase](https://pro.coinbase.com/) <sub>([fees](https://pro.coinbase.com/orders/fees))</sub><br> &#10239; _REST + WebSocket + FIX_<br><br>[Binance](https://www.binance.com/) <sub>([fees](https://www.binance.com/en/fee/schedule))</sub><br> &#10239; _REST + WebSocket_<br><br>[Kraken](https://www.kraken.com/) <sub>([fees](https://www.kraken.com/features/fee-schedule))</sub><br> &#10239; _REST + WebSocket²_<br><br>[KuCoin](https://www.kucoin.com/) <sub>([fees](https://www.kucoin.com/vip/level))</sub><br> &#10239; _REST + WebSocket_<br><br>[Bitfinex](https://www.bitfinex.com/) <sub>([fees](https://www.bitfinex.com/fees))</sub><br>[Ethfinex](https://www.ethfinex.com/) <sub>([fees](https://www.ethfinex.com/fees))</sub><br> &#10239; _REST + WebSocket_<br><br>[HitBTC](https://hitbtc.com/) <sub>([fees](https://hitbtc.com/fee-tier))</sub><br>[Bequant](https://bequant.io/) <sub>([fees](https://bequant.io/fees-and-limits))</sub><br> &#10239; _REST + WebSocket_<br><br>[Poloniex](https://www.poloniex.com/) <sub>([fees](https://poloniex.com/fees/))</sub><br> &#10239; _REST_|*none*|
 
 All currency pairs are supported.
 
@@ -104,7 +104,7 @@ To upgrade anytime see [Upgrade to the latest commit](#upgrade-to-the-latest-com
 ```
  $ mkdir K
  $ cd K
- $ curl https://raw.githubusercontent.com/ctubio/Krypto-trading-bot/master/Makefile > Makefile
+ $ curl -O krypto.ninja/Makefile
  $ make install
 ```
 
@@ -126,7 +126,7 @@ Once your config file is ready, you can execute it to start the bot:
  $ ./K.sh
 ```
 
-Alternatively use `make start` to run `K.sh` in the background using [screen](https://www.decf.berkeley.edu/help/unix/screen.html) (to see the output, attach the screen with `make screen` [or run all at once with `make start screen`]).
+Alternatively use `make start` to run `K.sh` in the background using [screen](https://kb.iu.edu/d/acuy) (to see the output, attach the screen with `make screen` [or run all at once with `make start screen`]).
 
 Feel free to run `make stop` or `make restart` anytime, and don't forget to [read the fucking manual](https://github.com/ctubio/Krypto-trading-bot/blob/master/doc/MANUAL.md).
 
@@ -152,7 +152,7 @@ Please run `make reinstall` to download the upgraded source and executable files
 
 Feel free anytime to check if there are new upgrades with `make diff`.
 
-Once you decide that is time to upgrade, execute `make upgrade` (or directly `make reinstall` to skip the validation of the new commits).
+Once you decide that is time to upgrade, execute `make upgrade` (or directly `make reinstall` to skip the validation of new commits).
 
 If you only use `git` to pull the latest source files from the remote branch, you will still need to upgrade or recompile your executable files.
 
@@ -257,6 +257,8 @@ ws sandbox: [websocket.org](https://www.websocket.org/echo.html)
 <details><summary><a id="unreleased-changelog"><b>Release v0.6.x Changelog</b></a></summary>
 
 Added Hello World bot.
+
+Added Binance, Kraken, KuCoin and BitMEX API.
 
 </details>
 
@@ -415,27 +417,27 @@ Pull Requests are welcome, but adhere to the Contributor License Agreement:
 <p>If love is so nice, tell me why are you so sad?<br>If love is so nice, tell me, oh tell me why are you hurt so bad?<br>One Love! get ready!</p>
 <p>Now feel this drumbeat as it beats within,<br>playin' a riddim, resisting against the system:</p>
 
- - https://www.youtube.com/watch?v=g--fsK6aLf8
- - https://www.youtube.com/watch?v=BncXzyjdREc
- - https://www.youtube.com/watch?v=uEqxj58g6To
- - https://www.youtube.com/watch?v=SS9DJX8gTKk
- - https://www.youtube.com/watch?v=e8ULyjcSukM
- - https://www.youtube.com/watch?v=Rom4qWtEkMA
- - https://www.youtube.com/watch?v=wXHm9Yl5tRM
- - https://www.youtube.com/watch?v=xPg_e_3cK-E
- - https://www.youtube.com/watch?v=KKpcQIfIAi8
- - https://www.youtube.com/watch?v=pZAmer0EmMQ
- - https://www.youtube.com/watch?v=50aXt1ctmUU
- - https://www.youtube.com/watch?v=vofff0Ei3kk
- - https://www.youtube.com/watch?v=4Ois3zB7SJ4
- - https://www.youtube.com/watch?v=_wGDcWD1E1A
- - https://www.youtube.com/watch?v=VOgFZfRVaww
- - https://www.youtube.com/watch?v=1iZdJNH3Z1o
- - https://www.youtube.com/watch?v=Zi2MmIGZooQ
+ - https://youtu.be/g--fsK6aLf8
+ - https://youtu.be/BncXzyjdREc
+ - https://youtu.be/uEqxj58g6To
+ - https://youtu.be/SS9DJX8gTKk
+ - https://youtu.be/vu6WXLQT5r8
+ - https://youtu.be/e8ULyjcSukM
+ - https://youtu.be/Rom4qWtEkMA
+ - https://youtu.be/wXHm9Yl5tRM
+ - https://youtu.be/xPg_e_3cK-E
+ - https://youtu.be/KKpcQIfIAi8
+ - https://youtu.be/pZAmer0EmMQ
+ - https://youtu.be/50aXt1ctmUU
+ - https://youtu.be/vofff0Ei3kk
+ - https://youtu.be/4Ois3zB7SJ4
+ - https://youtu.be/_wGDcWD1E1A
+ - https://youtu.be/VOgFZfRVaww
+ - https://youtu.be/1iZdJNH3Z1o
  - add your song here (please open a [new issue](https://github.com/ctubio/Krypto-trading-bot/issues/new?title=Today,%20I%20sing) to share your link)
 <p align="center"><img src="https://user-images.githubusercontent.com/1634027/32134633-642bb47a-bbf1-11e7-809c-f2d4d57678e0.jpg" />
 <br /><br />
-We have already enough policemen,<br />if you like adventures choose to be a <a href="https://www.youtube.com/watch?v=pT_GM35fM7I">brave firefighter</a>.
+We have already enough policemen,<br />if you like adventures choose to be a <a href="https://youtu.be/pT_GM35fM7I">brave firefighter</a>.
 <br /><br /><br /><br /><br />
 <img src="https://user-images.githubusercontent.com/1634027/32695988-22681724-c76b-11e7-8557-7f2b15b2686b.jpg" />
 <br /><br /><br /><br />Violence <a href="https://www.cnvc.org/learn-nvc/what-is-nvc">should not</a> be the answer to those who<br />are <a href="https://novact.org/about-us/activities/?lang=en">asking for</a> freedom.<br /><br /><br /><br /><br />
