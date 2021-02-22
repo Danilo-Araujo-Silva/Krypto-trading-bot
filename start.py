@@ -26,9 +26,9 @@ def main():
 
 	formatted_pair_id = pair_id.lower().replace('/', '_')
 
-	parameters = configuration['exchanges']['parameters'][program_id]
-	parameters = exchange['parameters'][program_id].update(parameters)
-	parameters = pair['parameters'][program_id].update(parameters)
+	parameters = configuration['exchanges']['parameters'][program_id] if configuration['exchanges']['parameters'][program_id] else {}
+	parameters = exchange['parameters'][program_id].update(parameters) if exchange['parameters'][program_id] else parameters
+	parameters = pair['parameters'][program_id].update(parameters) if pair['parameters'][program_id] else parameters
 
 	# Removing the extra argument, since it is not a common parameter
 	extra = parameters['extra']
