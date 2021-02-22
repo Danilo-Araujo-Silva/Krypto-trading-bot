@@ -31,7 +31,7 @@ def main():
 	parameters = pair['parameters'][program_id].update(parameters) if pair['parameters'][program_id] else parameters
 
 	# Removing the extra argument, since it is not a common parameter
-	extra = parameters['extra']
+	extra = parameters.get('extra', '--colors --naked')
 	parameters.pop('extra', None)
 
 	parameters['title'] = parameters.get('title', f'{exchange} - {pair}')
@@ -53,7 +53,7 @@ def main():
 	for key, value in parameters.items():
 		final_parameters += f' --{key} {value}'
 
-	final_parameters += ' ' + extra if extra else '--colors --naked'
+	final_parameters += f' {extra}'
 
 	command = f'''{binary_name} {final_parameters} "$@"'''
 
