@@ -8,7 +8,7 @@ def main():
 	exchange_id = os.environ.get('exchange', 'binance')
 	pair_id = os.environ.get('pair', 'btc/usdt')
 	shared_folder = os.environ.get('shared_folder', '/root/shared')
-	configuration_path = os.environget('configuration_path', '/root/configuration/configuration.json')
+	configuration_path = os.environ.get('configuration_path', '/root/configuration/configuration.json')
 
 	with open(configuration_path) as file:
 		configuration = json.load(file)
