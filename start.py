@@ -40,7 +40,7 @@ def main():
 
 
 	parameters['title'] = parameters.get('title', f'"{exchange_id.capitalize()} - {pair_id.upper()}"')
-	parameters['port'] = parameters.get('port', 10001)
+	parameters['port'] = os.environ.get('port', parameters.get('port', 10001))
 	parameters['exchange'] = parameters.get('exchange', exchange_id.upper())
 	parameters['currency'] = parameters.get('currency', pair_id.upper())
 	parameters['database'] = parameters.get('database', f'{database_folder}/{formatted_pair_id}.db')
