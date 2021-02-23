@@ -30,8 +30,9 @@ def main():
 	parameters = {**parameters, **exchange['parameters'][program_id]}  if exchange['parameters'][program_id] else parameters
 	parameters = {**parameters, **pair['parameters'][program_id]} if pair['parameters'][program_id] else parameters
 
-	# Removing helper parameters
-	parameters.pop('initial_port', None)
+	# Removing meta parameters
+	meta = parameters.get('meta', {})
+	parameters.pop('meta', None)
 
 	# Removing the extra argument, since it is not a common parameter
 	extra = parameters.get('extra', '--colors --naked')
