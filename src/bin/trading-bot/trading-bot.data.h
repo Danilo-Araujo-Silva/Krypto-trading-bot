@@ -468,10 +468,10 @@ namespace tribeca {
   };
 
   struct MarketTakers: public Client::Broadcast<Trade> {
+    vector<Trade>  trades;
+            Amount takersBuySize60s  = 0,
+                   takersSellSize60s = 0;
     public:
-      vector<Trade>  trades;
-              Amount takersBuySize60s  = 0,
-                     takersSellSize60s = 0;
       MarketTakers(const KryptoNinja &bot)
         : Broadcast(bot)
       {};
@@ -911,7 +911,7 @@ namespace tribeca {
       {};
       bool warn_empty() const {
         const bool err = bids.empty() or asks.empty();
-        if (err and (float)clock()/CLOCKS_PER_SEC > 3.0)
+        if (err and Tspent > 21e+3)
           K.logWar("QE", "Unable to calculate quote, missing market data", 3e+3);
         return err;
       };
@@ -1740,7 +1740,7 @@ namespace tribeca {
       };
       bool warn_empty() const {
         const bool err = empty();
-        if (err and (float)clock()/CLOCKS_PER_SEC > 3.0)
+        if (err and Tspent > 21e+3)
           K.logWar("PG", "Unable to calculate TBP, missing wallet data", 3e+3);
         return err;
       };
@@ -2751,12 +2751,8 @@ namespace tribeca {
         const unsigned int replace = K.gateway->askForReplace and !(
           quote.empty() or abandoned.empty()
         );
-        for_each(
-          abandoned.begin(), abandoned.end() - replace,
-          [&](Order *const it) {
-            cancelOrder(it);
-          }
-        );
+        for (auto it = abandoned.begin(); it != abandoned.end() - replace;)
+          cancelOrder(*it++);
         if (quote.empty()) return;
         if (replace)
           replaceOrder(quote.price, quote.isPong, abandoned.back());

@@ -218,9 +218,6 @@ namespace ₿ {
 /**/  virtual             bool async_wallet()    { return false; };          // call         async wallet data from exchange
 /**/  virtual             bool async_cancelAll() { return false; };          // call         async orders data from exchange
 /**/  virtual vector<Wallets>   sync_wallet()    { return {}; };             // call and read sync wallet data from exchange
-/**/  virtual  vector<Levels>   sync_levels()    { return {}; };             // call and read sync levels data from exchange
-/**/  virtual   vector<Trade>   sync_trades()    { return {}; };             // call and read sync trades data from exchange
-/**/  virtual   vector<Order>   sync_orders()    { return {}; };             // call and read sync orders data from exchange
 /**/  virtual   vector<Order>   sync_cancelAll() { return {}; };             // call and read sync orders data from exchange
 //EO non-free Gw library functions from build-*/lib/K-*.a (it just redefines all virtual gateway class members above).......
       struct {
@@ -240,12 +237,6 @@ namespace ₿ {
         async.wallets.wait_for(loop,   [&]() { return sync_wallet(); });
         async.cancelAll.wait_for(loop, [&]() { return sync_cancelAll(); });
       };
-      void wait_for_sync_data(Loop *const loop) {
-        async.orders.wait_for(loop,    [&]() { return sync_orders(); });
-        wait_for_never_async_data(loop);
-        async.levels.wait_for(loop,    [&]() { return sync_levels(); });
-        async.trades.wait_for(loop,    [&]() { return sync_trades(); });
-      };
       void ask_for_never_async_data(const unsigned int &tick) {
         if (((askForFees and !(askForFees = false))
           or !(tick % 15))
@@ -253,12 +244,6 @@ namespace ₿ {
         if ((askForCancelAll
           and !(tick % 300))
           and !async_cancelAll()) async.cancelAll.ask_for();
-      };
-      void ask_for_sync_data(const unsigned int &tick) {
-        if (!(tick % 2))          async.orders.ask_for();
-        ask_for_never_async_data(tick);
-        if (!(tick % 3))          async.levels.ask_for();
-        if (!(tick % 60))         async.trades.ask_for();
       };
   };
 
@@ -280,9 +265,9 @@ namespace ₿ {
       Future margin    = (Future)0;
          int debug     = 0;
       Connectivity adminAgreement = Connectivity::Disconnected;
-      virtual void disconnect() {};
-      virtual bool connected() const { return true; };
-      virtual json handshake() const = 0;
+      virtual void disconnect()       = 0;
+      virtual bool connected()  const = 0;
+      virtual json handshake()  const = 0;
       json handshake(const bool &nocache) {
         json reply;
         const string cache = (K_HOME "/cache/handshake")
@@ -341,7 +326,6 @@ namespace ₿ {
         disconnect();
       };
       void report(Report notes, const bool &nocache) {
-        if (exchange == "NULL") print("all data is random");
         for (auto it : (Report){
           {"symbols", (margin == Future::Linear
                         ? symbol             + " (" + decimal.funds.str(decimal.funds.step)
@@ -353,10 +337,8 @@ namespace ₿ {
                           ? base
                           : "Contract" + string(minSize == 1 ? 0 : 1, 's')
                       ) + (minValue ? " or " + decimal.price.str(minValue) + " " + quote : "")},
-          {"makeFee", decimal.percent.str(makeFee * 1e+2) + "%"
-                        + (makeFee ? "" : " (please use --maker-fee argument!)")              },
-          {"takeFee", decimal.percent.str(takeFee * 1e+2) + "%"
-                        + (takeFee ? "" : " (please use --taker-fee argument!)")              }
+          {"makeFee", decimal.percent.str(makeFee * 1e+2) + "%"                               },
+          {"takeFee", decimal.percent.str(takeFee * 1e+2) + "%"                               }
         }) notes.push_back(it);
         string note = "handshake:";
         for (auto &it : notes)
@@ -382,14 +364,15 @@ namespace ₿ {
       };
       void disclaimer() const {
         if (unlock.empty()) return;
-        print("was slowdown 7 seconds (--free-version argument was implicitly set):"
-          "\n" "\n" "Your apikey: " + apikey +
+        print("was slowdown 121 seconds (--free-version argument was implicitly set):"
+          "\n" "\n" "Current apikey: " + apikey.substr(0, apikey.length() / 2)
+                                       + string(apikey.length() / 2, '#') +
           "\n" "\n" "To unlock it anonymously and to collaborate with"
           "\n"      "the development, make an acceptable Pull Request"
           "\n"      "on github.. or send 0.01210000 BTC (or more) to:"
           "\n" "\n" "  " + unlock +
-          "\n" "\n" "Before restart just wait for 0 confirmations at:"
-          "\n"      "https://live.blockcypher.com/btc/address/" + unlock +
+          "\n" "\n" "Before restart, wait for zero (0) confirmations:"
+          "\n" "\n" "https://live.blockcypher.com/btc/address/" + unlock +
           "\n" "\n" OBLIGATORY_analpaper_SOFTWARE_LICENSE
           "\n" "\n" "                     Signed-off-by: Carles Tubio"
           "\n"      "see: github.com/ctubio/Krypto-trading-bot#unlock"
@@ -425,16 +408,6 @@ namespace ₿ {
 //EO non-free Gw library functions from build-*/lib/K-*.a (it just returns a derived gateway class based on argument).......
   };
 
-  class GwApiREST: public Gw {
-    public:
-      void ask_for_data(const unsigned int &tick) override {
-        ask_for_sync_data(tick);
-      };
-      void wait_for_data(Loop *const loop) override {
-        online();
-        wait_for_sync_data(loop);
-      };
-  };
   class GwApiWs: public Gw,
                  public Curl::WebSocket {
     private:
@@ -485,7 +458,7 @@ namespace ₿ {
         if (next) {
           if (json::accept(msg))
             consume(json::parse(msg));
-          else print("CURL Error: Unsupported data format");
+          else print("WS Error: Unsupported data format");
         }
         return next;
       };
@@ -595,26 +568,6 @@ namespace ₿ {
       };
   };
 
-  class GwNull: public GwApiREST {
-    public:
-      GwNull()
-      {
-        randId = Random::uuid36Id;
-      };
-    public:
-      json handshake() const override {
-        return {
-          {     "base", base     },
-          {    "quote", quote    },
-          {"webMarket", webMarket},
-          {"webOrders", webOrders},
-          {"tickPrice", 1e-2     },
-          { "tickSize", 1e-2     },
-          {  "minSize", 1e-2     },
-          {    "reply", nullptr  }
-        };
-      };
-  };
   class GwBinance: public GwApiWs {
     public:
       GwBinance()
@@ -739,7 +692,7 @@ namespace ₿ {
         });
       };
   };
-  class GwHitBtc: public GwApiWs {
+  class GwHitBtc: public GwApiWs { // new urls: https://api.hitbtc.com/#api-urls
     public:
       GwHitBtc()
       {
@@ -1010,12 +963,12 @@ namespace ₿ {
         });
       };
   };
-  class GwPoloniex: public GwApiREST {
+  class GwPoloniex: public GwApiWs {
     public:
       GwPoloniex()
       {
         http   = "https://poloniex.com";
-        // ws     = "wss://api2.poloniex.com"; // https://docs.poloniex.com/#price-aggregated-book
+        ws     = "wss://api2.poloniex.com";
         randId = Random::int45Id;
         webMarket = "https://poloniex.com/exchange";
         webOrders = "https://poloniex.com/tradeHistory";

@@ -160,7 +160,7 @@ namespace ₿ {
         if (mods.empty()) {
           epilogue += "(Three-Headed Monkey found):\n" + epitaph
             + "- binbuild: " K_SOURCE " " K_CHOST "\n"
-              "- lastbeat: " + to_string((float)clock()/CLOCKS_PER_SEC) + '\n'
+              "- lastbeat: " + to_string(Tspent) + '\n'
 #ifndef _WIN32
             + "- tracelog: " + '\n';
           void *k[69];
@@ -268,7 +268,7 @@ namespace ₿ {
           else                  clog << Ansi::r(COLOR_WHITE);
           clog << ' ' << reason;
           if (!highlight.empty())
-            clog << ' ' << Ansi::b(COLOR_YELLOW) << highlight;
+            clog << string(reason.back() != '=', ' ') << Ansi::b(COLOR_YELLOW) << highlight;
           clog << Ansi::r(COLOR_WHITE) << '.' << endl;
           return;
         }
@@ -284,7 +284,8 @@ namespace ₿ {
         if (color == 1)       wattroff(stdlog, COLOR_PAIR(COLOR_CYAN));
         else if (color == -1) wattroff(stdlog, COLOR_PAIR(COLOR_MAGENTA));
         if (!highlight.empty()) {
-          wprintw(stdlog, " ");
+          if (reason.back() != '=')
+            wprintw(stdlog, " ");
           wattroff(stdlog, COLOR_PAIR(COLOR_WHITE));
           wattron(stdlog, COLOR_PAIR(COLOR_YELLOW));
           wprintw(stdlog, highlight.data());
@@ -368,7 +369,6 @@ namespace ₿ {
        const string  help;
       };
     protected:
-      bool autobot  = false;
       bool dustybot = false;
       using MutableUserArguments = unordered_map<string, variant<string, int, double>>;
       pair<vector<Argument>, function<void(MutableUserArguments&)>> arguments;
@@ -382,7 +382,7 @@ namespace ₿ {
         return get<T>(args.at(name));
       };
     protected:
-      void main(Ending *const K, int argc, char** argv, const bool &databases, const bool &headless) {
+      void main(Ending *const K, int argc, char** argv, const bool &ev_order, const bool &databases, const bool &headless) {
         K->ending([&]() {
           if (display.terminal) {
             display = {};
@@ -393,9 +393,9 @@ namespace ₿ {
                << epilogue
                << string(epilogue.empty() ? 0 : 1, '\n');
         });
-        args["autobot"]  = autobot;
-        args["dustybot"] = dustybot;
+        args["autobot"]  =
         args["headless"] = headless;
+        args["dustybot"] = dustybot;
         args["naked"]    = !display.terminal;
         vector<Argument> long_options = {
           {"help",         "h",      nullptr,  "show this help and quit"},
@@ -436,24 +436,22 @@ namespace ₿ {
         for (const Argument &it : (vector<Argument>){
           {"interface",    "IP",     "",       "set IP to bind as outgoing network interface"},
           {"ipv6",         "1",      nullptr,  "use IPv6 when possible"},
-          {"exchange",     "NAME",   "NULL",   "set exchange NAME for trading, mandatory"},
-          {"currency",     "PAIR",   "NULL",   "set currency PAIR for trading, use format ISO 4217-A3"
+          {"exchange",     "NAME",   "",       "set exchange NAME for trading, mandatory"},
+          {"currency",     "PAIR",   "",       "set currency PAIR for trading, use format ISO 4217-A3"
                                                "\n" "with '/' separator, like 'BTC/EUR', mandatory"},
-          {"apikey",       "WORD",   "NULL",   "set (never share!) WORD as api key for trading, mandatory"},
-          {"secret",       "WORD",   "NULL",   "set (never share!) WORD as api secret for trading, mandatory"},
-          {"passphrase",   "WORD",   "NULL",   "set (never share!) WORD as api passphrase for trading,"
-                                               "\n" "mandatory but may be 'NULL'"},
-          {"maker-fee",    "AMOUNT", "0",      "set custom percentage of maker fee, like '0.1'"},
-          {"taker-fee",    "AMOUNT", "0",      "set custom percentage of taker fee, like '0.1'"},
-          {"min-size",     "AMOUNT", "0",      "set custom minimum order size, like '0.01'"},
-          {"leverage",     "AMOUNT", "1",      "set between '0.01' and '100' to enable isolated margin,"
-                                               "\n" "or use '0' for cross margin; default AMOUNT is '1'"},
+          {"apikey",       "WORD",   "",       "set (never share!) WORD as api key for trading, mandatory"},
+          {"secret",       "WORD",   "",       "set (never share!) WORD as api secret for trading, mandatory"},
+          {"passphrase",   "WORD",   "",       "set (never share!) WORD as api passphrase for trading"},
           {"http",         "URL",    "",       "set URL of alernative HTTPS api endpoint for trading"},
           {"wss",          "URL",    "",       "set URL of alernative WSS api endpoint for trading"},
           {"fix",          "URL",    "",       "set URL of alernative FIX api endpoint for trading"},
           {"market-limit", "NUMBER", "321",    "set NUMBER of maximum price levels for the orderbook,"
                                                "\n" "default NUMBER is '321' and the minimum is '10'"}
         }) long_options.push_back(it);
+        if (ev_order) long_options.push_back(
+          {"lifetime",     "NUMBER", "0",      "set NUMBER of minimum milliseconds to keep orders open,"
+                                               "\n" "otherwise open orders can be replaced anytime required"}
+        );
         for (const Argument &it : arguments.first)
           long_options.push_back(it);
         arguments.first.clear();
@@ -462,7 +460,7 @@ namespace ₿ {
           {"debug",        "1",      nullptr,  "print detailed output about all the (previous) things!"},
           {"colors",       "1",      nullptr,  "print highlighted output"},
           {"title",        "WORD",   K_SOURCE, "set WORD to allow admins to identify different bots"},
-          {"free-version", "1",      nullptr,  "slowdown market levels 7 seconds"}
+          {"free-version", "1",      nullptr,  "slowdown market levels 121 seconds"}
         }) long_options.push_back(it);
         int index = ANY_NUM;
         vector<option> opt_long = { {nullptr, 0, nullptr, 0} };
@@ -492,7 +490,7 @@ namespace ₿ {
           switch (k = getopt_long(argc, argv, "hv", (option*)&opt_long[0], &index)) {
             case -1 :
             case  0 : break;
-            case 'h': help(long_options);                                 [[fallthrough]];
+            case 'h': help(long_options, headless);                       [[fallthrough]];
             case '?':
             case 'v': EXIT(EXIT_SUCCESS);                                 [[fallthrough]];
             default : {
@@ -542,6 +540,10 @@ namespace ₿ {
         args["currency"] = Text::strU(arg<string>("currency"));
         args["base"]  = Text::strU(arg<string>("currency").substr(0, arg<string>("currency").find("/")));
         args["quote"] = Text::strU(arg<string>("currency").substr(1+ arg<string>("currency").find("/")));
+        if (args.find("leverage")  == args.end()) args["leverage"]  = 1.0;
+        if (args.find("min-size")  == args.end()) args["min-size"]  = 0.0;
+        if (args.find("maker-fee") == args.end()) args["maker-fee"] = 0.0;
+        if (args.find("taker-fee") == args.end()) args["taker-fee"] = 0.0;
         args["market-limit"] = max(10, arg<int>("market-limit"));
         args["leverage"] = fmax(0, fmin(100, arg<double>("leverage")));
         if (arg<int>("debug"))
@@ -573,7 +575,7 @@ namespace ₿ {
             : "";
         }
       };
-      void help(const vector<Argument> &long_options) {
+      void help(const vector<Argument> &long_options, const bool &headless) {
         const vector<string> stamp = {
           " \\__/  \\__/ ", " | (   .    ", "  __   \\__/ ",
           " /  \\__/  \\ ", " |  `.  `.  ", " /  \\       ",
@@ -592,6 +594,7 @@ namespace ₿ {
         clog
           << Ansi::b(COLOR_WHITE) << stamp.at(((++y%4)*3)+x) << "[arguments]:";
         for (const Argument &it : long_options) {
+          if (headless and it.name == "title") continue;
           string usage = it.help;
           string::size_type n = 0;
           while ((n = usage.find('\n', n + 1)) != string::npos)
@@ -1165,7 +1168,12 @@ namespace ₿ {
     public:
       KryptoNinja *main(int argc, char** argv) {
         {
-          Option::main(this, argc, argv, databases, documents.empty());
+          bool ev_order = false;
+          for (const auto &it : events)
+            if (holds_alternative<Gw::DataEvent>(it)
+              and holds_alternative<function<void(const Order&)>>(get<Gw::DataEvent>(it))
+            ) ev_order = true;
+          Option::main(this, argc, argv, ev_order, databases, documents.empty());
           setup();
         } {
           if (windowed())
