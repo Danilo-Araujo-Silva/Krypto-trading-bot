@@ -61,9 +61,6 @@ def main():
 
 	command = f'''{binary_name} {final_parameters} "$@"'''
 
-	print(f'parameters:\n{parameters}')
-	print(f'command:\n{command}')
-
 	os.system(command)
 
 if __name__ == '__main__':
