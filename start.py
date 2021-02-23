@@ -14,7 +14,7 @@ def main():
 		configuration = json.load(file)
 
 	database_folder = f'{shared_folder}/database/{exchange_id.lower()}'
-	os.system(f'mkir -p {database_folder}')
+	os.system(f'mkdir -p {database_folder}')
 
 	exchange = configuration['exchanges'][exchange_id]
 	if exchange['status'] != 'enabled':
@@ -27,14 +27,18 @@ def main():
 	formatted_pair_id = pair_id.lower().replace('/', '_')
 
 	parameters = configuration['exchanges']['parameters'][program_id] if configuration['exchanges']['parameters'][program_id] else {}
-	parameters = exchange['parameters'][program_id].update(parameters) if exchange['parameters'][program_id] else parameters
-	parameters = pair['parameters'][program_id].update(parameters) if pair['parameters'][program_id] else parameters
+	parameters = {**parameters, **exchange['parameters'][program_id]}  if exchange['parameters'][program_id] else parameters
+	parameters = {**parameters, **pair['parameters'][program_id]} if pair['parameters'][program_id] else parameters
+
+	# Removing helper parameters
+	parameters.pop('initial_port', None)
 
 	# Removing the extra argument, since it is not a common parameter
 	extra = parameters.get('extra', '--colors --naked')
 	parameters.pop('extra', None)
 
-	parameters['title'] = parameters.get('title', f'{exchange} - {pair}')
+
+	parameters['title'] = parameters.get('title', f'"{exchange_id.capitalize()} - {pair_id.upper()}"')
 	parameters['port'] = parameters.get('port', 10001)
 	parameters['exchange'] = parameters.get('exchange', exchange_id.upper())
 	parameters['currency'] = parameters.get('currency', pair_id.upper())
